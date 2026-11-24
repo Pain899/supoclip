@@ -325,25 +325,26 @@ class TaskService(ClipEditingMixin):
         if range_dir:
             # The picked part's audio and links; its timings never become the video's.
             shutil.rmtree(range_dir, ignore_errors=True)
-        if not video_path:
-            return
 
         if source_type == "youtube":
             try:
                 video_id = extract_video_id(url)
                 if video_id:
-                    try:
-                        if not range_dir:
+                    if video_path is not None and not range_dir:
+                        try:
                             MediaStorage().save_youtube_metadata(
                                 video_id, transcript_source_for(video_id, video_path)
                             )
-                    except Exception:
-                        logger.exception("Could not back up YouTube word timings")
+                        except Exception:
+                            logger.exception("Could not back up YouTube word timings")
                     cleanup_downloaded_files(video_id, source_path=video_path)
                     logger.info("Cleaned up YouTube source artifacts for %s", video_id)
                     return
             except Exception as e:
                 logger.warning("Failed YouTube source cleanup: %s", e)
+
+        if not video_path:
+            return
 
         if source_type in {"twitch", "kick"}:
             try:

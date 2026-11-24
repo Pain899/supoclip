@@ -20,7 +20,8 @@ const posthogRewrites = isPostHogEnabled
 
 const nextConfig: NextConfig = {
   distDir: process.env.NEXT_BUILD_DIR || ".next",
-  output: 'standalone',
+  // Standalone output needs symlink rights, which plain Windows lacks; set NEXT_OUTPUT=default to skip it.
+  output: process.env.NEXT_OUTPUT === 'default' ? undefined : 'standalone',
   // Keep canonical tags in the initial <head>, including for Googlebot.
   htmlLimitedBots: /.*/,
   // PostHog's API paths end in a slash (e.g. /e/); don't redirect them.
