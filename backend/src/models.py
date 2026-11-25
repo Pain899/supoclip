@@ -458,6 +458,7 @@ class GeneratedClip(Base):
         Integer, nullable=True, server_default=sql_text("'0'")
     )
     hook_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    mood_category: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     # Workflow clips: part | topic | recap | trailer, the series part number
     # and the planned ranges and labels (empty for highlights).
     workflow_role: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)

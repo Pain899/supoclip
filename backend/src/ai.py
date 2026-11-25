@@ -203,6 +203,20 @@ class ViralityAnalysis(BaseModel):
         default="none",
         description="Type of hook: question, statement, statistic, story, contrast, or none",
     )
+    mood_category: Optional[
+        Literal[
+            "funny",
+            "emotional",
+            "exciting",
+            "angry",
+            "motivational",
+            "informative",
+            "other",
+        ]
+    ] = Field(
+        default="other",
+        description="Primary mood or emotion category: funny, emotional, exciting, angry, motivational, informative, or other",
+    )
     virality_reasoning: str = Field(
         default="The model did not provide a detailed virality breakdown.",
         description="Explanation of the virality score",
@@ -294,7 +308,8 @@ OUTPUT CONTRACT:
 - The top-level JSON object must include: "most_relevant_segments", "summary", and "key_topics".
 - Each item in "most_relevant_segments" must include: "start_time", "end_time", "text", "relevance_score", "reasoning", "virality", and "hook_title".
 - Do not use "segment" as an output field. Use "text".
-- "virality" must include: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", and "virality_reasoning".
+- "virality" must include: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", "mood_category", and "virality_reasoning".
+- "mood_category" must be one of: "funny", "emotional", "exciting", "angry", "motivational", "informative", "other".
 - Every returned segment must be {minimum}-{maximum} seconds long. Prefer {ideal_minimum}-{ideal_maximum} seconds.
 
 CORE OBJECTIVES:
@@ -903,7 +918,7 @@ JSON-only output requirements:
 - Segment keys: "start_time", "end_time", "text", "relevance_score", "reasoning", "virality", "hook_title".
 - Optional segment keys "hook_start_time"/"hook_end_time": null unless a later 2-5 second line stands alone and the real opening is already a complete setup. The clip is not replayed from that line by default.
 - "hook_title" is a 3-9 word plain-text headline for the clip, in the transcript's language, grounded in the segment (no hashtags, emojis, or quotes).
-- Virality keys: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", "virality_reasoning".
+- Virality keys: "hook_score", "engagement_score", "value_score", "shareability_score", "total_score", "hook_type", "mood_category", "virality_reasoning" (mood_category: funny, emotional, exciting, angry, motivational, informative, or other).
 - Do not return segments shorter than {bounds.minimum} seconds or longer than {bounds.maximum} seconds.
 
 {instructions_section}Transcript:

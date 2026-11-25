@@ -1517,6 +1517,7 @@ def create_clips_from_segments(
                     "value_score": segment.get("value_score", 0),
                     "shareability_score": segment.get("shareability_score", 0),
                     "hook_type": segment.get("hook_type"),
+                    "mood_category": segment.get("mood_category"),
                     "hook_title": segment.get("hook_title"),
                     "keep_ranges": keep_ranges,
                     "output_offsets": output_offsets,

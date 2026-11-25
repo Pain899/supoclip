@@ -75,9 +75,27 @@ _SCORE_COLUMNS = """virality_score, hook_score, engagement_score, value_score, s
        hook_title"""
 _WORKFLOW_COLUMNS = "workflow_role, part_number, workflow_meta"
 _FX_COLUMNS = "fx_meta"
+_MOOD_COLUMNS = "mood_category"
 
 
-def _clip_select(where: str, *, scores: bool, workflow: bool, fx: bool = False) -> str:
+def _with_mood_category(statement: str) -> str:
+    """Add ``mood_category`` to a clip INSERT/UPSERT statement."""
+    out = statement.replace(
+        "hook_title, workflow_role", "hook_title, mood_category, workflow_role"
+    ).replace(
+        ":hook_title, :workflow_role", ":hook_title, :mood_category, :workflow_role"
+    ).replace(
+        "hook_title = EXCLUDED.hook_title,",
+        "hook_title = EXCLUDED.hook_title,\n                    mood_category = EXCLUDED.mood_category,",
+    )
+    if out.count("mood_category") != 4:
+        raise RuntimeError("clip insert statement changed; cannot add mood_category")
+    return out
+
+
+def _clip_select(
+    where: str, *, scores: bool, workflow: bool, fx: bool = False, mood: bool = False
+) -> str:
     columns = [_CLIP_COLUMNS]
     if scores:
         columns.append(_SCORE_COLUMNS)
@@ -85,12 +103,15 @@ def _clip_select(where: str, *, scores: bool, workflow: bool, fx: bool = False) 
         columns.append(_WORKFLOW_COLUMNS)
     if fx:
         columns.append(_FX_COLUMNS)
+    if mood:
+        columns.append(_MOOD_COLUMNS)
     return f"SELECT {', '.join(columns)} FROM generated_clips WHERE {where}"
 
 
 def _clip_selects(where: str) -> List[str]:
-    """Newest schema first: dynamic-edits metadata, workflow columns, then scores, then the base columns."""
+    """Newest schema first: mood category, dynamic-edits metadata, workflow columns, scores, then base columns."""
     return [
+        _clip_select(where, scores=True, workflow=True, fx=True, mood=True),
         _clip_select(where, scores=True, workflow=True, fx=True),
         _clip_select(where, scores=True, workflow=True),
         _clip_select(where, scores=True, workflow=False),
@@ -120,6 +141,7 @@ class ClipRepository:
         value_score: int = 0,
         shareability_score: int = 0,
         hook_type: Optional[str] = None,
+        mood_category: Optional[str] = None,
         hook_title: Optional[str] = None,
         clip_id: Optional[str] = None,
         workflow_role: Optional[str] = None,
@@ -264,6 +286,9 @@ class ClipRepository:
         if fx_meta:
             statement, params = attempts[0]
             attempts.insert(0, (_with_fx_meta(statement), {**params, "fx_meta": json.dumps(fx_meta)}))
+        if mood_category:
+            statement, params = attempts[0]
+            attempts.insert(0, (_with_mood_category(statement), {**params, "mood_category": mood_category}))
         result = await _execute_newest_supported(db, attempts)
         clip_id = result.scalar()
         if not clip_id:
@@ -302,6 +327,7 @@ class ClipRepository:
                     "value_score": getattr(row, "value_score", 0) or 0,
                     "shareability_score": getattr(row, "shareability_score", 0) or 0,
                     "hook_type": getattr(row, "hook_type", None),
+                    "mood_category": getattr(row, "mood_category", None),
                     "hook_title": getattr(row, "hook_title", None),
                     "workflow_role": getattr(row, "workflow_role", None),
                     "part_number": getattr(row, "part_number", None),

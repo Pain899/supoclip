@@ -562,6 +562,7 @@ PUBLIC_CLIP_FIELDS = {
     "value_score",
     "shareability_score",
     "hook_type",
+    "mood_category",
     "hook_title",
     "part_number",
     "workflow_role",

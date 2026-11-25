@@ -993,6 +993,7 @@ class TaskService(ClipEditingMixin):
                         value_score=clip_info.get("value_score", 0),
                         shareability_score=clip_info.get("shareability_score", 0),
                         hook_type=clip_info.get("hook_type"),
+                        mood_category=clip_info.get("mood_category"),
                         hook_title=clip_info.get("hook_title"),
                         **workflow_fields,
                         **({"fx_meta": clip_info["fx_meta"]} if clip_info.get("fx_meta") else {}),

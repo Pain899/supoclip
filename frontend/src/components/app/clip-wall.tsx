@@ -37,6 +37,21 @@ export interface WallClip extends WorkflowClipFields {
   shareability_score: number;
   hook_type: string | null;
   hook_title: string | null;
+  mood_category?: string | null;
+}
+
+const MOOD_BADGES: Record<string, { label: string; className: string }> = {
+  funny: { label: "Funny", className: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  emotional: { label: "Emotional", className: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  exciting: { label: "Exciting", className: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
+  angry: { label: "Angry", className: "bg-rose-500/15 text-rose-700 dark:text-rose-300" },
+  motivational: { label: "Motivational", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
+  informative: { label: "Informative", className: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" },
+};
+
+export function moodCategoryLabel(mood: string | null | undefined): string | null {
+  if (!mood || mood === "other") return null;
+  return MOOD_BADGES[mood]?.label ?? mood.charAt(0).toUpperCase() + mood.slice(1);
 }
 
 type TaskT = ReturnType<typeof useTranslations<"task">>;
@@ -149,7 +164,14 @@ export function ClipTile({ clip, taskId, busy, best, editable, partTotal, onOpen
         ) : (
           <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{title}</h3>
         )}
-        <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">{clip.start_time} – {clip.end_time}</p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+          <p className="text-xs tabular-nums text-muted-foreground">{clip.start_time} – {clip.end_time}</p>
+          {moodCategoryLabel(clip.mood_category) && (
+            <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", MOOD_BADGES[clip.mood_category ?? ""]?.className ?? "bg-muted text-muted-foreground")}>
+              {moodCategoryLabel(clip.mood_category)}
+            </span>
+          )}
+        </div>
         <div className="mt-2 flex items-center gap-1">
           <Button size="sm" variant="outline" className="h-7 flex-1 px-2 text-xs" onClick={onDownload} disabled={busy} aria-label={t("downloadNamed", { title })}>
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}<span className="hidden @min-[190px]:inline">{t("download")}</span>

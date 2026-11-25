@@ -586,11 +586,13 @@ def stored_segment_scores(segment: Dict[str, Any]) -> Dict[str, Any]:
             "virality_score": virality.get("total_score", 0),
             **{key: virality.get(key, 0) for key in SCORE_KEYS},
             "hook_type": virality.get("hook_type"),
+            "mood_category": virality.get("mood_category"),
         }
     return {
         "virality_score": segment.get("virality_score") or 0,
         **{key: segment.get(key) or 0 for key in SCORE_KEYS},
         "hook_type": segment.get("hook_type"),
+        "mood_category": segment.get("mood_category"),
     }
 
 
@@ -1776,6 +1778,7 @@ class VideoService:
                 "value_score": segment.get("value_score", 0),
                 "shareability_score": segment.get("shareability_score", 0),
                 "hook_type": segment.get("hook_type"),
+                "mood_category": segment.get("mood_category"),
                 "hook_title": segment.get("hook_title"),
                 "keep_ranges": keep_ranges,
                 "output_offsets": output_offsets,
@@ -1957,6 +1960,7 @@ class VideoService:
                     "value_score": virality.get("value_score", 0),
                     "shareability_score": virality.get("shareability_score", 0),
                     "hook_type": virality.get("hook_type"),
+                    "mood_category": virality.get("mood_category"),
                     "hook_title": getattr(segment, "hook_title", None),
                     "hook_start_time": getattr(segment, "hook_start_time", None),
                     "hook_end_time": getattr(segment, "hook_end_time", None),

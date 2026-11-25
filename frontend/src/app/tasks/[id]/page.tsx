@@ -70,7 +70,7 @@ import {
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { ClipTile, ClipFocus, ProcessingPanel, ProcessingSlots, EmptyState, clipProgressFromMessage, sourceTimestamp } from "@/components/app/clip-wall";
+import { ClipTile, ClipFocus, ProcessingPanel, ProcessingSlots, EmptyState, clipProgressFromMessage, moodCategoryLabel, sourceTimestamp } from "@/components/app/clip-wall";
 import { orderedParts, seriesPartTotal, SeriesView, unfinishedSeries } from "@/components/app/series-view";
 import { HeroClipView } from "@/components/app/hero-clip-view";
 import { DownloadAllButton } from "@/components/app/download-all-button";
@@ -132,6 +132,7 @@ interface Clip extends WorkflowClipFields {
   shareability_score: number;
   hook_type: string | null;
   hook_title: string | null;
+  mood_category?: string | null;
   /** Dynamic edits on this clip (only present when it has them): render level, caption timing, intensity, template. */
   fx_meta?: ClipFxMeta | null;
 }
@@ -309,6 +310,7 @@ export default function TaskPage() {
   const [deletingClipId, setDeletingClipId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [exportPreset, setExportPreset] = useState("original");
+  const [moodFilter, setMoodFilter] = useState<string>("all");
   const [shareState, setShareState] = useState<"idle" | "copying" | "copied">("idle");
   const [isRevokingShare, setIsRevokingShare] = useState(false);
 
@@ -860,7 +862,19 @@ export default function TaskPage() {
     : sortable && sortBy === "score"
       ? [...clips].sort((a, b) => (b.virality_score ?? 0) - (a.virality_score ?? 0) || a.clip_order - b.clip_order)
       : clips;
-  const focusedClip = focusIndex !== null ? sortedClips[focusIndex] : null;
+  const moodCounts = sortedClips.reduce<Record<string, number>>((acc: Record<string, number>, clip: Clip) => {
+    const mood = clip.mood_category;
+    if (mood && moodCategoryLabel(mood)) {
+      acc[mood] = (acc[mood] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
+  const availableMoods = Object.keys(moodCounts);
+  const activeMoodFilter = moodFilter !== "all" && moodCounts[moodFilter] ? moodFilter : "all";
+  const visibleClips = activeMoodFilter === "all"
+    ? sortedClips
+    : sortedClips.filter((clip: Clip) => clip.mood_category === activeMoodFilter);
+  const focusedClip = focusIndex !== null ? visibleClips[focusIndex] : null;
   const bestScore = SCORED.has(workflow) ? clips.reduce((best, clip) => Math.max(best, clip.virality_score || 0), 0) : 0;
   const totalSeconds = clips.reduce((sum, clip) => sum + (clip.duration || 0), 0);
   const partTotal = isSeries ? seriesPartTotal(plan, clips) : undefined;
@@ -1237,8 +1251,29 @@ export default function TaskPage() {
                 {formatSelect}
               </div>
             </div>
+            {availableMoods.length > 0 && (
+              <div className="mb-5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter clips by mood">
+                <button
+                  type="button"
+                  onClick={() => { setMoodFilter("all"); setFocusIndex(null); }}
+                  className={cn("h-7 rounded-full border px-3 text-xs font-medium transition-colors", activeMoodFilter === "all" ? "border-foreground bg-foreground text-background" : "bg-background text-muted-foreground hover:text-foreground")}
+                >
+                  All ({sortedClips.length})
+                </button>
+                {availableMoods.map((mood) => (
+                  <button
+                    key={mood}
+                    type="button"
+                    onClick={() => { setMoodFilter(mood); setFocusIndex(null); }}
+                    className={cn("h-7 rounded-full border px-3 text-xs font-medium transition-colors", activeMoodFilter === mood ? "border-foreground bg-foreground text-background" : "bg-background text-muted-foreground hover:text-foreground")}
+                  >
+                    {moodCategoryLabel(mood)} ({moodCounts[mood]})
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {sortedClips.map(renderTile)}
+              {visibleClips.map(renderTile)}
             </div>
           </>
         )}
@@ -1248,10 +1283,10 @@ export default function TaskPage() {
         clip={focusedClip}
         taskId={task?.id ?? String(params.id)}
         index={focusIndex ?? 0}
-        total={sortedClips.length}
+        total={visibleClips.length}
         busy={focusedClip ? pendingAction === focusedClip.id || focusedRendering : false}
         editable={task?.status === "completed" && !readOnly && !focusedRendering}
-        onNavigate={(delta) => setFocusIndex((i) => (i === null ? i : (i + delta + sortedClips.length) % sortedClips.length))}
+        onNavigate={(delta) => setFocusIndex((i) => (i === null ? i : (i + delta + visibleClips.length) % visibleClips.length))}
         onClose={() => setFocusIndex(null)}
         onDownload={() => focusedClip && handleDownloadClip(focusedClip)}
         onDelete={readOnly || focusedRendering ? undefined : () => { if (focusedClip) { setDeletingClipId(focusedClip.id); setFocusIndex(null); } }}
