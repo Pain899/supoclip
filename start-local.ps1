@@ -13,6 +13,10 @@ $env:XDG_CACHE_HOME = "$t\cache"
 $env:TORCH_HOME = "$t\cache\torch"
 $env:TEMP = "$t\tmp"
 $env:TMP = "$t\tmp"
+$env:WORKER_CPU_THREADS = "2"
+$env:FFMPEG_THREADS = "2"
+$env:OMP_NUM_THREADS = "2"
+$env:MKL_NUM_THREADS = "2"
 New-Item -ItemType Directory -Force "$t\cache\torch", "$t\tmp" | Out-Null
 $env:Path = "$t\pnpm\node_modules\.bin;$t\tesseract;$env:Path"
 

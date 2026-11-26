@@ -150,6 +150,8 @@ class Config:
         self.output_dir = os.getenv("OUTPUT_DIR", "outputs")
 
         self.max_clips = int(os.getenv("MAX_CLIPS", "10"))
+        self.min_virality_score = max(0, min(100, self._get_int_env("MIN_VIRALITY_SCORE", 0)))
+        self.whisper_unload_after_transcribe = self._get_bool_env("WHISPER_UNLOAD_AFTER_TRANSCRIBE", False)
         self.clip_duration = int(os.getenv("CLIP_DURATION", "30"))  # seconds
 
         self.temp_dir = os.getenv("TEMP_DIR", "temp")

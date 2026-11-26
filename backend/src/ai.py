@@ -1877,7 +1877,30 @@ async def get_most_relevant_parts_by_transcript(
         source_seconds = max(
             (line["end_seconds"] for line in transcript_lines), default=0
         )
-        limit = max_final_clips_for_duration(source_seconds, get_config().max_clips)
+        cfg = get_config()
+        limit = max_final_clips_for_duration(source_seconds, cfg.max_clips)
+        min_score = getattr(cfg, "min_virality_score", 0) or 0
+        if min_score > 0 and candidates:
+            high_priority = [
+                c for c in candidates
+                if (c.virality.total_score if c.virality else 0) >= min_score
+            ]
+            if high_priority:
+                dropped = len(candidates) - len(high_priority)
+                if dropped > 0:
+                    logger.info(
+                        "Skipped %d low-priority candidate(s) below MIN_VIRALITY_SCORE=%d",
+                        dropped,
+                        min_score,
+                    )
+                candidates = high_priority
+            else:
+                logger.info(
+                    "All %d candidates scored below MIN_VIRALITY_SCORE=%d; keeping top candidate only",
+                    len(candidates),
+                    min_score,
+                )
+                candidates = candidates[:1]
         # Retain already-ranked alternatives until picture suitability checks
         # finish. No extra model call is needed when a slate is rejected.
         validated_segments = candidates[: min(24, limit * 2) if include_reserve else limit]

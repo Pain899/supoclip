@@ -39,14 +39,31 @@ def clamp_even(value: int, minimum: int, maximum: int) -> int:
 
 def run_ffmpeg_command(command: List[str], timeout: int = 900) -> subprocess.CompletedProcess:
     """Run ffmpeg/ffprobe and log stderr on failure."""
+    import os
+
+    cmd = list(command)
+    threads = os.getenv("FFMPEG_THREADS", os.getenv("WORKER_CPU_THREADS", "2")).strip()
+    if cmd and Path(cmd[0]).stem.lower() == "ffmpeg" and threads.isdigit() and int(threads) > 0:
+        if "-threads" in cmd:
+            idx = cmd.index("-threads")
+            if idx + 1 < len(cmd) and cmd[idx + 1] == "0":
+                cmd[idx + 1] = threads
+        else:
+            cmd = [cmd[0], "-threads", threads, *cmd[1:]]
+    popen_kwargs = {}
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = getattr(
+            subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0x00004000
+        )
     result = subprocess.run(
-        command,
+        cmd,
         capture_output=True,
         text=True,
         timeout=timeout,
+        **popen_kwargs,
     )
     if result.returncode != 0:
-        logger.error("Command failed: %s\n%s", " ".join(command), result.stderr[-4000:])
+        logger.error("Command failed: %s\n%s", " ".join(cmd), result.stderr[-4000:])
     return result
 
 

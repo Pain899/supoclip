@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  Check, ChevronLeft, ChevronRight, Download, Flame, Loader2, MessageSquare,
+  Check, ChevronLeft, ChevronRight, Copy, Download, Flame, Loader2, MessageSquare,
   Play, Scissors, Share2, Star, Trash2, TrendingUp,
 } from "lucide-react";
 import { ClipCover, ScoreRing } from "@/components/app/clip-cover";
@@ -38,20 +38,56 @@ export interface WallClip extends WorkflowClipFields {
   hook_type: string | null;
   hook_title: string | null;
   mood_category?: string | null;
+  reasoning?: string;
 }
 
-const MOOD_BADGES: Record<string, { label: string; className: string }> = {
-  funny: { label: "Funny", className: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-  emotional: { label: "Emotional", className: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
-  exciting: { label: "Exciting", className: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
-  angry: { label: "Angry", className: "bg-rose-500/15 text-rose-700 dark:text-rose-300" },
-  motivational: { label: "Motivational", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
-  informative: { label: "Informative", className: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300" },
+const MOOD_BADGES: Record<string, { label: string; className: string; emoji: string; tag: string }> = {
+  funny: { label: "Funny", className: "bg-amber-500/15 text-amber-700 dark:text-amber-300", emoji: "😂", tag: "FunnyShorts" },
+  emotional: { label: "Emotional", className: "bg-sky-500/15 text-sky-700 dark:text-sky-300", emoji: "🥺", tag: "EmotionalShorts" },
+  exciting: { label: "Exciting", className: "bg-orange-500/15 text-orange-700 dark:text-orange-300", emoji: "🔥", tag: "TrendingShorts" },
+  angry: { label: "Angry", className: "bg-rose-500/15 text-rose-700 dark:text-rose-300", emoji: "😡", tag: "ReactionShorts" },
+  motivational: { label: "Motivational", className: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300", emoji: "⚡", tag: "MotivationShorts" },
+  informative: { label: "Informative", className: "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300", emoji: "💡", tag: "TechShorts" },
 };
 
 export function moodCategoryLabel(mood: string | null | undefined): string | null {
   if (!mood || mood === "other") return null;
   return MOOD_BADGES[mood]?.label ?? mood.charAt(0).toUpperCase() + mood.slice(1);
+}
+
+export function buildYouTubeKit(clip: WallClip, baseTitle: string) {
+  const moodInfo = MOOD_BADGES[clip.mood_category ?? ""];
+  const emoji = moodInfo?.emoji ?? "🔥";
+  const cleanTitle = baseTitle.replace(/#shorts/gi, "").trim();
+  const ytTitle = `${cleanTitle.slice(0, 78)} ${emoji} #Shorts`;
+  const snippet = (clip.text || clip.reasoning || "").replace(/\s+/g, " ").trim().slice(0, 200);
+  const moodHashtag = moodInfo ? ` #${moodInfo.tag}` : "";
+  const ytDescription = [
+    `${cleanTitle} ${emoji}`,
+    snippet ? `\n"${snippet}${snippet.length >= 200 ? "..." : ""}"` : "",
+    "\nSubscribe to @ByteMasala for daily gaming, podcast, tech & viral Shorts! 🌶️⚡",
+    `\n#ByteMasala #Shorts #ViralShorts${moodHashtag}`,
+  ].filter(Boolean).join("\n");
+  const titleWords = cleanTitle
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 3)
+    .slice(0, 5);
+  const tagSet = new Set<string>([
+    cleanTitle.toLowerCase(),
+    ...titleWords,
+    ...(moodInfo ? [moodInfo.label.toLowerCase() + " shorts"] : []),
+    "youtube shorts",
+    "viral shorts",
+    "indian shorts",
+    "bytemasala",
+  ]);
+  return {
+    title: ytTitle,
+    description: ytDescription,
+    tags: Array.from(tagSet).filter(Boolean).join(", "),
+  };
 }
 
 type TaskT = ReturnType<typeof useTranslations<"task">>;
@@ -199,6 +235,57 @@ const BREAKDOWN = [
   { key: "shareability_score", labelKey: "shareability", icon: Share2 },
 ] as const;
 
+function YouTubeKitSection({ clip, baseTitle }: { clip: WallClip; baseTitle: string }) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const kit = buildYouTubeKit(clip, baseTitle);
+  const copyField = (key: string, value: string) => {
+    void navigator.clipboard?.writeText(value);
+    setCopiedKey(key);
+    window.setTimeout(() => setCopiedKey((prev) => (prev === key ? null : prev)), 1800);
+  };
+  const fullText = `Title:\n${kit.title}\n\nDescription:\n${kit.description}\n\nTags:\n${kit.tags}`;
+  return (
+    <section className="rounded-xl border p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold">YouTube Shorts Kit</p>
+        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => copyField("all", fullText)}>
+          {copiedKey === "all" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+          {copiedKey === "all" ? "Copied All" : "Copy All"}
+        </Button>
+      </div>
+      <div className="space-y-2 text-xs">
+        <div className="rounded-lg bg-muted/50 p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-muted-foreground">Title</span>
+            <button type="button" onClick={() => copyField("title", kit.title)} className="inline-flex items-center gap-1 text-foreground hover:underline">
+              {copiedKey === "title" ? <Check className="size-3" /> : <Copy className="size-3" />}{copiedKey === "title" ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="mt-1 font-medium select-all">{kit.title}</p>
+        </div>
+        <div className="rounded-lg bg-muted/50 p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-muted-foreground">Description</span>
+            <button type="button" onClick={() => copyField("desc", kit.description)} className="inline-flex items-center gap-1 text-foreground hover:underline">
+              {copiedKey === "desc" ? <Check className="size-3" /> : <Copy className="size-3" />}{copiedKey === "desc" ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <pre className="mt-1 whitespace-pre-wrap font-sans text-muted-foreground select-all">{kit.description}</pre>
+        </div>
+        <div className="rounded-lg bg-muted/50 p-2.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium text-muted-foreground">Tags</span>
+            <button type="button" onClick={() => copyField("tags", kit.tags)} className="inline-flex items-center gap-1 text-foreground hover:underline">
+              {copiedKey === "tags" ? <Check className="size-3" /> : <Copy className="size-3" />}{copiedKey === "tags" ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="mt-1 text-muted-foreground select-all">{kit.tags}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function ClipFocus({ clip, taskId, index, total, busy, editable, onNavigate, onClose, onDownload, onDelete, hookTypeLabel, actions, children }: {
   clip: WallClip | null;
   taskId: string;
@@ -307,6 +394,7 @@ export function ClipFocus({ clip, taskId, index, total, busy, editable, onNaviga
                 )}
 
                 {clip.text && <TranscriptPreview text={clip.text} clipTitle={clipTitle(clip, t)} />}
+                <YouTubeKitSection clip={clip} baseTitle={clipTitle(clip, t)} />
                 {children}
               </div>
               <div className="mt-auto flex flex-wrap items-center gap-2 border-t bg-muted/30 px-5 py-3">

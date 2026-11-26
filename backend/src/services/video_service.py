@@ -1987,6 +1987,13 @@ class VideoService:
         if max_clips is not None:
             # The creator's count replaces the length-based default, up to the server's limit.
             clip_limit = min(max_clips, max(clip_limit, runtime_config.max_clips))
+        min_score = getattr(runtime_config, "min_virality_score", 0) or 0
+        if not prepared_segments and min_score > 0 and segments_json:
+            high_priority = [
+                s for s in segments_json
+                if (s.get("virality_score") or 0) >= min_score
+            ]
+            segments_json = high_priority if high_priority else segments_json[:1]
         # Retain a bounded reserve until picture checks finish, so a rejected
         # slate can be replaced by the next already-ranked candidate.
         if not prepared_segments:

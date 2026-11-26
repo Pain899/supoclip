@@ -572,11 +572,22 @@ def _soniox_result_to_transcript_data(
 
 
 def _get_whisper_model(model_name: str = "base"):
-    """Load and cache a Whisper model by name."""
+    """Load and cache a Whisper model by name (lazy-imports whisper/torch)."""
+    global _whisper
     if not _WHISPER_AVAILABLE:
         raise RuntimeError(
             "Whisper is not installed. Install it with: uv add openai-whisper"
         )
+    if _whisper is None:
+        import os
+        import torch
+        import whisper as _loaded_whisper
+
+        try:
+            torch.set_num_threads(max(1, int(os.getenv("WORKER_CPU_THREADS", "2"))))
+        except Exception:
+            pass
+        _whisper = _loaded_whisper
     if model_name not in _WHISPER_MODEL_CACHE:
         logger.info("Loading Whisper model: %s", model_name)
         _WHISPER_MODEL_CACHE[model_name] = _whisper.load_model(model_name)
@@ -883,6 +894,12 @@ def _get_transcript_with_whisper(video_path: Path, runtime_config) -> str:
 
     formatted_lines = format_transcript_for_analysis(whisper_result)
     cache_transcript_data(video_path, whisper_result)
+    if getattr(runtime_config, "whisper_unload_after_transcribe", False) and _WHISPER_MODEL_CACHE:
+        import gc
+
+        _WHISPER_MODEL_CACHE.clear()
+        gc.collect()
+        logger.info("Unloaded Whisper model from RAM after transcription")
 
     result = "\n".join(formatted_lines)
     logger.info(

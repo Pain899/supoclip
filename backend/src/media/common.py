@@ -24,7 +24,14 @@ import tempfile
 
 import time
 
+import os
+
 import cv2
+
+try:
+    cv2.setNumThreads(max(1, int(os.getenv("WORKER_CPU_THREADS", "2"))))
+except Exception:
+    pass
 
 import assemblyai as aai
 
@@ -34,13 +41,10 @@ import srt
 
 from datetime import timedelta
 
-try:
-    import whisper as _whisper
+import importlib.util
 
-    _WHISPER_AVAILABLE = True
-except ImportError:  # pragma: no cover - optional transcription backend
-    _whisper = None
-    _WHISPER_AVAILABLE = False
+_whisper = None
+_WHISPER_AVAILABLE = importlib.util.find_spec("whisper") is not None
 
 from ..config import get_config
 

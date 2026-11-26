@@ -34,10 +34,25 @@ def worker_settings(embed_cron: bool | None = None) -> list[str]:
 
 
 def main() -> int:
+    threads = os.getenv("WORKER_CPU_THREADS", "2").strip() or "2"
+    for var in (
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "OPENBLAS_NUM_THREADS",
+        "NUMEXPR_NUM_THREADS",
+        "FFMPEG_THREADS",
+    ):
+        os.environ.setdefault(var, threads)
+    popen_kwargs = {}
+    if os.name == "nt":
+        # Keep Windows desktop/UI responsive under heavy ffmpeg/Whisper load.
+        popen_kwargs["creationflags"] = getattr(
+            subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0x00004000
+        )
     commands = [
         [sys.executable, "-m", "arq", settings] for settings in worker_settings()
     ]
-    children = [subprocess.Popen(command) for command in commands]
+    children = [subprocess.Popen(command, **popen_kwargs) for command in commands]
     stopping = False
 
     def stop(signum, _frame) -> None:
