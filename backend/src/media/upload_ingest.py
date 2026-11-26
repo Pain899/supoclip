@@ -69,11 +69,13 @@ def _fsync_file(path: Path) -> None:
     with path.open("rb+") as handle:
         handle.flush()
         os.fsync(handle.fileno())
-    directory = os.open(path.parent, os.O_RDONLY)
-    try:
-        os.fsync(directory)
-    finally:
-        os.close(directory)
+    if os.name != "nt":
+        # Windows does not permit os.open on directories.
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
 
 
 def _write_sidecar(path: Path, reference: str) -> None:
